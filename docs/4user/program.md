@@ -2,7 +2,7 @@
 
 ## Program Class
 
-User-Mode Program is supported by Hyper OS in a special way. Each program is a inheritance class of abstract class `program`(see `/src/program/program.h`). You should implement two virtual function: `main()` and `static_init()`.
+User-Mode Program is supported by Hyper OS in a special way. Each program is an inheritance class of abstract class `program`(see `/src/program/program.h`). You should implement two virtual functions: `main()` and `static_init()`.
 
 1. `void static_init()` is called when the program is 'compiled', and in Hyper OS it is called when it's cloned by `program manager`. In `static_init()` you can allocate memory in `.bss` or `.data`(see section `Process Memory Layout`), modify the data in `.data` using `handle<T>::modify_in_compile(T)`(see section `Handle`), or set name for program.
 
@@ -19,7 +19,7 @@ User-Mode Program is supported by Hyper OS in a special way. Each program is a i
        // alloc 20 string in .bss
    }
    ```
-   It is not allowed to allocate space in stack/heap, because they don't exist until being loaded into process.
+   It is not allowed to allocate space in stack/heap, because they don't exist until the program is loaded into process.
 
 2. `void main()` is the main function of program. When the program is load into a process by system call `exec_program` (see section `System Call and Standard Library`) or kernel, the function is called after initialization. You can allocate space in heap or stack, do some works and exit using either `return` or system call `exit`.
 
@@ -32,11 +32,11 @@ User-Mode Program is supported by Hyper OS in a special way. Each program is a i
    }
    ```
 
-Just like real operating systems, Hyper OS provides process as runtime environment for user-mode programs, which makes it possible for multi programs to work together independently.
+Just like real operating systems, Hyper OS provides the process as the runtime environment for user-mode programs, which makes it possible for several programs to work together independently.
 
 ## Process Memory Layout 
 
-A process of Hyper OS has its own page table and `2G` independent linear address space(the size of linear address space is defined in `src/mm/pmem_info.cpp`). To simplify the problem, program in Hyper OS use very simple memory layout. Linear address space are divided into four sections, `.text, .data, .bss, .stack`, from `0x0` to `0x7fffffff`. 
+A process of Hyper OS has its own page table and `2G` independent linear address space (the size of linear address space is defined in `src/mm/pmem_info.cpp`). To simplify the problem, programs in Hyper OS use very simple memory layout. Linear address space is divided into four sections, `.text, .data, .bss, .stack`, from `0x0` to `0x7fffffff`. 
 
 - As program code is not actually in `.text`, the size of `.text` is always 0. 
 - Static data of program (allocated by `handle::alloc_static`) will stores in `.data`. Static data is saved in `char *program::data`, and the size of `.data` is computed after `static_init()` finished. When the program is loaded into process, kernel allocate pages for `.data` and copy data of `char *program::data` into memory. 
@@ -98,7 +98,7 @@ The functions and operators about `handle` are listed below.
 
 ### Tail Check
 
-After any memory access operation, the handle will do **tail check**. If the interrupt flag is `true`, in other words, there is an external interrupt, the program will stop itself, release CPU access and notify the LAPIC atomicly. After that, ISR for external interrupt (actually a thread) starts processing.
+After any memory access operation, the handle will do **tail check**. If the interrupt flag is `true`, (in other words, there is an external interrupt), the program will stop itself, release CPU access and notify the LAPIC atomicly. After that, ISR for external interrupt (actually a thread) starts processing.
 
 ```sequence
 APIC -> process 1: set interrupt flag 
@@ -126,7 +126,7 @@ at the beginning of `src/program/program.cpp`.
 
 ## Memory Allocation
 
-We say a handle **own** an object if the handle points to it using
+We say a handle **owns** an object if the handle points to it using
 
 ```c++
 handle<T> this_handle = alloc_*();
@@ -146,7 +146,7 @@ Four kinds of memory allocation is supported in Hyper OS.
 
    `alloc_bss<T>(int n)`: **during `static_init` only.** Allocate n objects sequentially in `.data` and return the handle of first object. 
 
-3. `alloc_stack<T>()`: **during running only. **Allocate an object of type T in stack and return the handle.
+3. `alloc_stack<T>()`: **during running only.** Allocate an object of type T in stack and return the handle.
 
 4. `alloc_heap<T>()`: **during running only**. Allocate an object of type T in heap and return the handle.
 
@@ -164,7 +164,7 @@ The implement of `malloc, free` is in `src/process/proc_dmm.cpp`. They allocate 
 
 In order to run a program in Hyper OS, you need to register the program in `program manager`. There are three steps.
 
-1. Write a generate function like
+1. Write a generation function like
 
    ```c++
    static program* gen()
@@ -185,6 +185,7 @@ In order to run a program in Hyper OS, you need to register the program in `prog
    ```c++
    void init_program_manager()
    {
+      ...
    	register_shell();
    }
    ```
